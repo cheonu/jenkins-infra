@@ -40,9 +40,14 @@ spec:
             limits:
               memory: "1Gi"
               cpu: "500m"
+          env:
+            - name: CASC_JENKINS_CONFIG
+              value: /var/jenkins_home/casc_configs
           volumeMounts:
             - name: jenkins-home
               mountPath: /var/jenkins_home
+            - name: jenkins-casc
+              mountPath: /var/jenkins_home/casc_configs
           readinessProbe:
             httpGet:
               path: /login
@@ -59,6 +64,9 @@ spec:
         - name: jenkins-home
           persistentVolumeClaim:
             claimName: jenkins-home
+        - name: jenkins-casc
+          configMap:
+            name: jenkins-casc
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

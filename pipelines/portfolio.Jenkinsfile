@@ -13,6 +13,8 @@ pipeline {
                     volumeMounts:
                     - name: docker-storage
                       mountPath: /var/lib/docker
+                    - name: shared
+                      mountPath: /shared
                   - name: kubectl
                     image: bitnami/kubectl:latest
                     command: ['sleep']
@@ -21,8 +23,13 @@ pipeline {
                     image: google/cloud-sdk:slim
                     command: ['sleep']
                     args: ['infinity']
+                    volumeMounts:
+                    - name: shared
+                      mountPath: /shared
                   volumes:
                   - name: docker-storage
+                    emptyDir: {}
+                  - name: shared
                     emptyDir: {}
             '''
         }
@@ -54,18 +61,24 @@ pipeline {
             }
         }
 
-        stage('Push to Artifact Registry') {
+        stage('Auth to Artifact Registry') {
             steps {
                 container('gcloud') {
                     withCredentials([file(credentialsId: 'gcp-service-account', variable: 'GCP_KEY')]) {
                         sh """
                             gcloud auth activate-service-account --key-file=\$GCP_KEY
-                            gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
+                            gcloud auth print-access-token > /shared/gcp-token
                         """
                     }
                 }
+            }
+        }
+
+        stage('Push to Artifact Registry') {
+            steps {
                 container('docker') {
                     sh """
+                        cat /shared/gcp-token | docker login -u oauth2accesstoken --password-stdin https://${REGION}-docker.pkg.dev
                         docker push ${FULL_IMAGE}
                         docker push ${LATEST_IMAGE}
                     """
