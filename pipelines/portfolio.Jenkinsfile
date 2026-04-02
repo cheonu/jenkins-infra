@@ -96,7 +96,7 @@ pipeline {
                     withCredentials([file(credentialsId: 'gcp-service-account', variable: 'GCP_KEY')]) {
                         sh """
                             gcloud auth activate-service-account --key-file=\$GCP_KEY
-                            gcloud container clusters get-credentials crypto-trader-eu --region ${REGION} --project ${PROJECT_ID}
+                            gcloud container clusters get-credentials crypto-trader-eu --zone europe-west1-b --project ${PROJECT_ID}
                             kubectl set image deployment/portfolio \
                                 portfolio=${FULL_IMAGE} \
                                 -n ${K8S_NAMESPACE}
