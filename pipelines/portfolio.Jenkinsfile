@@ -67,7 +67,9 @@ pipeline {
                     withCredentials([file(credentialsId: 'gcp-service-account', variable: 'GCP_KEY')]) {
                         sh """
                             gcloud auth activate-service-account --key-file=\$GCP_KEY
-                            gcloud auth print-access-token > /shared/gcp-token
+                            gcloud auth print-access-token | tr -d '\\n' > /shared/gcp-token
+                            echo "Auth activated for SA:"
+                            gcloud config get-value account
                         """
                     }
                 }
@@ -78,7 +80,10 @@ pipeline {
             steps {
                 container('docker') {
                     sh """
-                        cat /shared/gcp-token | docker login -u oauth2accesstoken --password-stdin https://${REGION}-docker.pkg.dev
+                        TOKEN=\$(cat /shared/gcp-token)
+                        echo "Token length: \${#TOKEN}"
+                        echo "\$TOKEN" | docker login -u oauth2accesstoken --password-stdin https://${REGION}-docker.pkg.dev
+                        echo "Docker login exit code: \$?"
                         docker push ${FULL_IMAGE}
                         docker push ${LATEST_IMAGE}
                     """
