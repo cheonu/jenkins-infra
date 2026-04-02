@@ -1,0 +1,8 @@
+workflow-aggregator
+kubernetes
+kubernetes-credentials
+git
+credentials-binding
+pipeline-stage-view
+docker-workflow
+configuration-as-code
