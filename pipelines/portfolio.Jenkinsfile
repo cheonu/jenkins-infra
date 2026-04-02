@@ -95,6 +95,8 @@ pipeline {
                 container('kubectl') {
                     withCredentials([file(credentialsId: 'gcp-service-account', variable: 'GCP_KEY')]) {
                         sh """
+                            apt-get update -qq && apt-get install -y -qq kubectl google-cloud-cli-gke-gcloud-auth-plugin > /dev/null 2>&1
+                            export USE_GKE_GCLOUD_AUTH_PLUGIN=True
                             gcloud auth activate-service-account --key-file=\$GCP_KEY
                             gcloud container clusters get-credentials crypto-trader-eu --zone europe-west1-b --project ${PROJECT_ID}
                             kubectl set image deployment/portfolio \
