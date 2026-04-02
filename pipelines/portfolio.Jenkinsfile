@@ -16,9 +16,12 @@ pipeline {
                     - name: shared
                       mountPath: /shared
                   - name: kubectl
-                    image: bitnami/kubectl:latest
+                    image: google/cloud-sdk:slim
                     command: ['sleep']
                     args: ['infinity']
+                    volumeMounts:
+                    - name: shared
+                      mountPath: /shared
                   - name: gcloud
                     image: google/cloud-sdk:slim
                     command: ['sleep']
@@ -68,8 +71,6 @@ pipeline {
                         sh """
                             gcloud auth activate-service-account --key-file=\$GCP_KEY
                             gcloud auth print-access-token | tr -d '\\n' > /shared/gcp-token
-                            echo "Auth activated for SA:"
-                            gcloud config get-value account
                         """
                     }
                 }
@@ -81,9 +82,7 @@ pipeline {
                 container('docker') {
                     sh """
                         TOKEN=\$(cat /shared/gcp-token)
-                        echo "Token length: \${#TOKEN}"
                         echo "\$TOKEN" | docker login -u oauth2accesstoken --password-stdin https://${REGION}-docker.pkg.dev
-                        echo "Docker login exit code: \$?"
                         docker push ${FULL_IMAGE}
                         docker push ${LATEST_IMAGE}
                     """
@@ -94,13 +93,17 @@ pipeline {
         stage('Deploy to K8s') {
             steps {
                 container('kubectl') {
-                    sh """
-                        kubectl set image deployment/portfolio \
-                            portfolio=${FULL_IMAGE} \
-                            -n ${K8S_NAMESPACE}
-                        kubectl rollout status deployment/portfolio \
-                            -n ${K8S_NAMESPACE} --timeout=120s
-                    """
+                    withCredentials([file(credentialsId: 'gcp-service-account', variable: 'GCP_KEY')]) {
+                        sh """
+                            gcloud auth activate-service-account --key-file=\$GCP_KEY
+                            gcloud container clusters get-credentials crypto-trader-eu --region ${REGION} --project ${PROJECT_ID}
+                            kubectl set image deployment/portfolio \
+                                portfolio=${FULL_IMAGE} \
+                                -n ${K8S_NAMESPACE}
+                            kubectl rollout status deployment/portfolio \
+                                -n ${K8S_NAMESPACE} --timeout=120s
+                        """
+                    }
                 }
             }
         }
